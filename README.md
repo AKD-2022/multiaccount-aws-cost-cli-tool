@@ -1,658 +1,746 @@
 # AWS Cost CLI
 
-A simple command-line tool to analyze AWS costs across multiple accounts. See how much you're spending, track trends, and find which services cost the most.
+A command-line tool to analyze AWS costs across multiple accounts. Track spending, view trends, and identify top cost drivers.
 
-## What It Does
+## Features
 
-- 📊 Shows costs for multiple AWS accounts at once
-- 📈 Tracks cost trends month-over-month
-- 🔍 Breaks down costs by AWS service
-- 📁 Exports data to CSV, JSON, or charts
-- 🏷️ Filters costs by tags
+- 📊 Analyze costs across multiple AWS accounts simultaneously
+- 📈 Track month-over-month cost trends
+- 🔍 Break down costs by AWS service
+- 📁 Export to CSV, JSON, or PNG charts
+- 🏷️ Filter costs by tags
+- 🔐 Authenticate using `~/.aws/credentials` (supports multiple profiles)
 
-## Quick Start
+## First Time Setup (Step-by-Step)
 
-### Install
+Follow these steps if you're setting up the tool for the first time:
+
+### Step 1: Install Rust
+
+See the [Prerequisites](#prerequisites) section below for installation instructions.
+
+### Step 2: Configure AWS Credentials
+
+**Linux/Mac:**
+```bash
+# Create .aws directory
+mkdir -p ~/.aws
+
+# Edit credentials file
+nano ~/.aws/credentials
+```
+
+**Windows:**
+```powershell
+# Create .aws directory
+New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.aws
+
+# Edit credentials file
+notepad $env:USERPROFILE\.aws\credentials
+```
+
+Add your AWS credentials (see [Authentication](#authentication) section for format).
+
+### Step 3: Verify AWS Credentials
 
 ```bash
+# Test your credentials work
+aws sts get-caller-identity
+
+# List your profiles
+aws configure list-profiles
+```
+
+### Step 4: Build the Tool
+
+```bash
+# Navigate to project directory
+cd aws-cost-cli
+
 # Build the project
 cargo build --release
-
-# The tool will be at: target/release/aws-cost-cli
 ```
 
-### Run
+### Step 5: Test the Tool
 
-**Option 1: Using `cargo run` (Development/Quick Testing)**
+**Linux/Mac:**
 ```bash
-# Basic usage - analyze all your AWS profiles
-cargo run --release
-
-# Specify date range
-cargo run --release -- --start-date 2025-01-01 --end-date 2025-01-31
-
-# Export to CSV
-cargo run --release -- --csv my-report
-
-# Get JSON output
-cargo run --release -- --json
-
-# Note: Use -- after cargo run to pass arguments to your program
+./target/release/aws-cost-cli --help
 ```
 
-**Option 2: Using the built binary (Production)**
+**Windows:**
+```powershell
+target\release\aws-cost-cli.exe --help
+```
+
+### Step 6: Run Your First Query
+
+**Linux/Mac:**
 ```bash
-# Basic usage - analyze all your AWS profiles
+# Analyze all your AWS accounts
 ./target/release/aws-cost-cli
-
-# Specify date range
-./target/release/aws-cost-cli --start-date 2025-01-01 --end-date 2025-01-31
-
-# Export to CSV
-./target/release/aws-cost-cli --csv my-report
-
-# Get JSON output
-./target/release/aws-cost-cli --json
 ```
 
-**Windows Users:**
-```bash
-# Using cargo run
-cargo run --release -- --start-date 2025-01-01 --end-date 2025-01-31
-
-# Using the built binary
-target\release\aws-cost-cli.exe --start-date 2025-01-01 --end-date 2025-01-31
+**Windows:**
+```powershell
+# Analyze all your AWS accounts
+target\release\aws-cost-cli.exe
 ```
 
-## Commands Reference
+## Prerequisites
 
-### Setup Commands
+### Install Rust
 
-#### Install Rust (if not already installed)
-```bash
-# Windows - Download and run rustup-init.exe from https://rustup.rs/
-# Or use winget:
+**Windows:**
+```powershell
+# Option 1: Download rustup-init.exe from https://rustup.rs/
+# Option 2: Using winget
 winget install Rustlang.Rustup
 
-# Linux/Mac:
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-#### Verify Rust Installation
-```bash
+# Verify installation
 rustc --version
 cargo --version
 ```
 
-#### Configure AWS Credentials
+**Linux/Mac:**
 ```bash
-# Option 1: Use AWS CLI to configure
-aws configure
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Option 2: Set environment variables
-export AWS_ACCESS_KEY_ID=your_key
-export AWS_SECRET_ACCESS_KEY=your_secret
-export AWS_REGION=us-east-1
+# Follow the prompts, then reload your shell
+source ~/.cargo/env
 
-# Option 3: For SSO
-aws sso login
+# Verify installation
+rustc --version
+cargo --version
 ```
 
-### Build Commands
+### Install AWS CLI (Optional but Recommended)
 
-#### Build the Project
 ```bash
-# Development build
-cargo build
+# Windows (using winget)
+winget install Amazon.AWSCLI
 
-# Release build (optimized)
+# Linux
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Mac
+brew install awscli
+
+# Verify installation
+aws --version
+```
+
+## Installation
+
+### Step 1: Clone or Navigate to Project
+
+```bash
+# If you have the source code
+cd aws-cost-cli
+
+# Verify you're in the right directory (should see Cargo.toml)
+ls Cargo.toml  # Linux/Mac
+dir Cargo.toml  # Windows
+```
+
+### Step 2: Build the Project
+
+```bash
+# Build in release mode (optimized, recommended)
 cargo build --release
-
-# Clean build artifacts
-cargo clean
-
-# Run tests
-cargo test
 ```
 
-#### Install as Global Command (Optional)
-```bash
-# Install to cargo bin directory
-cargo install --path .
+**Build Output Location:**
+- **Linux/Mac:** `target/release/aws-cost-cli`
+- **Windows:** `target\release\aws-cost-cli.exe`
 
-# Then run from anywhere:
-aws-cost-cli --help
+### Step 3: Verify Build
+
+**Linux/Mac:**
+```bash
+./target/release/aws-cost-cli --help
 ```
 
-### Run Commands (Using `cargo run`)
-
-**Important:** When using `cargo run`, you need to use `--` to separate cargo arguments from your program arguments.
-
-#### Development Mode (Faster compilation, slower execution)
-```bash
-# Basic usage
-cargo run
-
-# With arguments - note the -- separator
-cargo run -- --start-date 2025-01-01 --end-date 2025-01-31
-
-# Multiple arguments
-cargo run -- --profiles prod,dev --csv report
+**Windows:**
+```powershell
+target\release\aws-cost-cli.exe --help
 ```
 
-#### Release Mode (Slower compilation, faster execution - Recommended)
+If you see the help message, the build was successful!
+
+## Authentication
+
+The tool authenticates using AWS credentials from `~/.aws/credentials` (same as AWS CLI). This makes it easy to work with multiple AWS accounts.
+
+### Credentials File Location
+
+The credentials file location depends on your operating system:
+
+- **Linux/Mac:** `~/.aws/credentials` (e.g., `/home/username/.aws/credentials`)
+- **Windows:** `%USERPROFILE%\.aws\credentials` (e.g., `C:\Users\YourName\.aws\credentials`)
+
+### Setup Credentials
+
+**Primary Method: `~/.aws/credentials` (Recommended)**
+
+Create or edit the credentials file to add your AWS accounts:
+
+**Linux/Mac:**
 ```bash
-# Basic usage
+# Create the .aws directory if it doesn't exist
+mkdir -p ~/.aws
+
+# Edit the credentials file
+nano ~/.aws/credentials
+# or
+vim ~/.aws/credentials
+```
+
+**Windows:**
+```powershell
+# Create the .aws directory if it doesn't exist
+New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.aws
+
+# Edit the credentials file (opens in Notepad)
+notepad $env:USERPROFILE\.aws\credentials
+```
+
+Then add your credentials:
+
+```ini
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY
+aws_secret_access_key = YOUR_SECRET_KEY
+region = us-east-1
+
+[prod]
+aws_access_key_id = PROD_ACCESS_KEY
+aws_secret_access_key = PROD_SECRET_KEY
+region = us-east-1
+
+[dev]
+aws_access_key_id = DEV_ACCESS_KEY
+aws_secret_access_key = DEV_SECRET_KEY
+region = us-east-1
+```
+
+**Alternative Methods:**
+- Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+- IAM roles (when running on EC2/ECS)
+- SSO: `aws sso login` (credentials cached in `~/.aws/credentials`)
+
+### Multiple AWS Accounts
+
+The tool automatically discovers and processes all profiles in `~/.aws/credentials`. Each profile can represent a different AWS account:
+
+- **Automatic discovery**: Run without `--profiles` to analyze all configured profiles
+- **Select specific accounts**: Use `--profiles prod,dev` to target specific accounts
+- **Account filtering**: Use `--account-id` to filter by account ID within profiles
+
+### Required Permissions
+
+Your AWS credentials need:
+- `ce:GetCostAndUsage` - Read cost data
+- `organizations:ListAccounts` - List accounts (optional, falls back to STS)
+- `sts:GetCallerIdentity` - Identify current account
+
+## Quick Start
+
+### Method 1: Using `cargo run` (Development/Quick Testing)
+
+**Important:** When using `cargo run`, you must use `--` to separate cargo arguments from program arguments.
+
+**Linux/Mac:**
+```bash
+# Basic usage - analyzes all AWS profiles from ~/.aws/credentials
 cargo run --release
 
 # With date range
 cargo run --release -- --start-date 2025-01-01 --end-date 2025-01-31
 
+# Analyze specific accounts
+cargo run --release -- --profiles prod,dev,staging
+
 # Export to CSV
-cargo run --release -- --csv my-report
+cargo run --release -- --csv report
 
 # JSON output
 cargo run --release -- --json
-
-# Multiple profiles
-cargo run --release -- --profiles prod,dev,staging
-
-# Full example with all options
-cargo run --release -- \
-  --start-date 2025-01-01 \
-  --end-date 2025-03-31 \
-  --profiles prod,dev \
-  --csv q1-report \
-  --granularity monthly
 ```
 
-**Why use `cargo run`?**
-- ✅ No need to build separately - cargo builds and runs in one command
-- ✅ Great for development and quick testing
-- ✅ Automatically rebuilds if code changes
-- ⚠️ Slightly slower startup time compared to running the binary directly
-
-**When to use the built binary instead:**
-- ✅ Production deployments
-- ✅ Faster execution (no cargo overhead)
-- ✅ Can be copied to other machines
-- ✅ Better for scripts and automation
-
-### Basic Usage Commands
-
-#### Run with Default Settings
-```bash
-# Using cargo run (development)
+**Windows:**
+```powershell
+# Basic usage - analyzes all AWS profiles from ~/.aws/credentials
 cargo run --release
 
-# Using the built binary
-./target/release/aws-cost-cli
-# Windows: target\release\aws-cost-cli.exe
-```
-
-#### Specify Date Range
-```bash
-# Using cargo run
+# With date range
 cargo run --release -- --start-date 2025-01-01 --end-date 2025-01-31
 
-# Using the built binary
-./target/release/aws-cost-cli --start-date 2025-01-01 --end-date 2025-01-31
-# Windows: target\release\aws-cost-cli.exe --start-date 2025-01-01 --end-date 2025-01-31
-```
-
-#### Select Specific AWS Profiles
-```bash
-# Using cargo run
-cargo run --release -- --profiles prod
+# Analyze specific accounts
 cargo run --release -- --profiles prod,dev,staging
 
-# Using the built binary
-./target/release/aws-cost-cli --profiles prod
-./target/release/aws-cost-cli --profiles prod,dev,staging
-```
-
-#### Filter by Account ID
-```bash
-# Using cargo run
-cargo run --release -- --account-id 123456789012
-cargo run --release -- --account-id 123456789012,987654321098
-
-# Using the built binary
-./target/release/aws-cost-cli --account-id 123456789012
-./target/release/aws-cost-cli --account-id 123456789012,987654321098
-```
-
-### Output Format Commands
-
-#### Export to CSV
-```bash
-# Using cargo run
+# Export to CSV
 cargo run --release -- --csv report
-cargo run --release -- --start-date 2025-01-01 --end-date 2025-03-31 --csv q1-report
 
-# Using the built binary
-./target/release/aws-cost-cli --csv report
-./target/release/aws-cost-cli --start-date 2025-01-01 --end-date 2025-03-31 --csv q1-report
-```
-
-#### JSON Output
-```bash
-# Using cargo run
+# JSON output
 cargo run --release -- --json
-cargo run --release -- --json > costs.json
-cargo run --release -- --start-date 2025-01-01 --end-date 2025-01-31 --json
+```
 
-# Using the built binary
+### Method 2: Using the Built Binary (Production/Recommended)
+
+**Linux/Mac:**
+```bash
+# Basic usage - analyzes all AWS profiles from ~/.aws/credentials
+./target/release/aws-cost-cli
+
+# With date range
+./target/release/aws-cost-cli --start-date 2025-01-01 --end-date 2025-01-31
+
+# Analyze specific accounts
+./target/release/aws-cost-cli --profiles prod,dev,staging
+
+# Export to CSV
+./target/release/aws-cost-cli --csv report
+
+# JSON output
 ./target/release/aws-cost-cli --json
-./target/release/aws-cost-cli --json > costs.json
-./target/release/aws-cost-cli --start-date 2025-01-01 --end-date 2025-01-31 --json
 ```
 
-#### Generate Charts
-```bash
-# Using cargo run
-cargo run --release -- --chart
-cargo run --release -- --start-date 2025-01-01 --end-date 2025-03-31 --chart
+**Windows:**
+```powershell
+# Basic usage - analyzes all AWS profiles from ~/.aws/credentials
+target\release\aws-cost-cli.exe
 
-# Using the built binary
-./target/release/aws-cost-cli --chart
-./target/release/aws-cost-cli --start-date 2025-01-01 --end-date 2025-03-31 --chart
+# With date range
+target\release\aws-cost-cli.exe --start-date 2025-01-01 --end-date 2025-01-31
+
+# Analyze specific accounts
+target\release\aws-cost-cli.exe --profiles prod,dev,staging
+
+# Export to CSV
+target\release\aws-cost-cli.exe --csv report
+
+# JSON output
+target\release\aws-cost-cli.exe --json
 ```
 
-### Advanced Commands
+### Method 3: Install Globally (Optional)
 
-#### Change Granularity
+After building, you can install it globally:
+
 ```bash
-# Using cargo run
-cargo run --release -- --granularity daily
-cargo run --release -- --granularity monthly
-cargo run --release -- --granularity hourly --start-date 2025-01-01 --end-date 2025-01-07
+# Install to cargo bin directory
+cargo install --path .
 
-# Using the built binary
-./target/release/aws-cost-cli --granularity daily
-./target/release/aws-cost-cli --granularity monthly
-./target/release/aws-cost-cli --granularity hourly --start-date 2025-01-01 --end-date 2025-01-07
-```
-
-#### Filter by Tags
-```bash
-# Using cargo run
-cargo run --release -- --tag-key Environment
-cargo run --release -- --tag-key Environment --tag-value Production
-
-# Using the built binary
-./target/release/aws-cost-cli --tag-key Environment
-./target/release/aws-cost-cli --tag-key Environment --tag-value Production
-```
-
-#### Use Profile-Account Mapping
-```bash
-# Using cargo run
-cargo run --release -- --profile-account-map accounts.json
-
-# Using the built binary
-./target/release/aws-cost-cli --profile-account-map accounts.json
-```
-
-### Combined Commands
-
-#### Full Example: Multiple Profiles with CSV Export
-```bash
-# Using cargo run
-cargo run --release -- \
-  --profiles prod,dev,staging \
-  --start-date 2025-01-01 \
-  --end-date 2025-03-31 \
-  --csv q1-report \
-  --granularity monthly
-
-# Using the built binary
-./target/release/aws-cost-cli \
-  --profiles prod,dev,staging \
-  --start-date 2025-01-01 \
-  --end-date 2025-03-31 \
-  --csv q1-report \
-  --granularity monthly
-```
-
-#### Full Example: JSON Output with Filters
-```bash
-# Using cargo run
-cargo run --release -- \
-  --start-date 2025-01-01 \
-  --end-date 2025-01-31 \
-  --account-id 123456789012 \
-  --tag-key Environment \
-  --tag-value Production \
-  --json > prod-costs.json
-
-# Using the built binary
-./target/release/aws-cost-cli \
-  --start-date 2025-01-01 \
-  --end-date 2025-01-31 \
-  --account-id 123456789012 \
-  --tag-key Environment \
-  --tag-value Production \
-  --json > prod-costs.json
-```
-
-#### Full Example: Charts with Specific Accounts
-```bash
-# Using cargo run
-cargo run --release -- \
-  --profiles prod,dev \
-  --start-date 2025-01-01 \
-  --end-date 2025-03-31 \
-  --granularity daily \
-  --chart
-
-# Using the built binary
-./target/release/aws-cost-cli \
-  --profiles prod,dev \
-  --start-date 2025-01-01 \
-  --end-date 2025-03-31 \
-  --granularity daily \
-  --chart
-```
-
-### Help Commands
-
-#### Show Help
-```bash
-# Using cargo run
-cargo run --release -- --help
-# Or simply:
-cargo run -- --help
-
-# Using the built binary
-./target/release/aws-cost-cli --help
-
-# If installed globally
+# Now you can run from anywhere
 aws-cost-cli --help
-```
-
-### Verification Commands
-
-#### Test AWS Credentials
-```bash
-# Verify AWS CLI is configured
-aws sts get-caller-identity
-
-# List available profiles
-aws configure list-profiles
-
-# Test specific profile
-aws sts get-caller-identity --profile prod
-```
-
-## Authentication
-
-The tool uses your existing AWS credentials. It works the same way as the AWS CLI.
-
-### How Authentication Works
-
-```
-1. You run the tool
-2. Tool looks for AWS credentials in this order:
-   - AWS profiles in ~/.aws/credentials
-   - Environment variables (AWS_ACCESS_KEY_ID, etc.)
-   - IAM roles (if running on EC2/ECS)
-3. Tool connects to AWS APIs
-4. Tool fetches your cost data
-```
-
-### Setup AWS Credentials
-
-**Option 1: Use AWS Profiles (Recommended)**
-
-Create `~/.aws/credentials`:
-```ini
-[default]
-aws_access_key_id = YOUR_KEY
-aws_secret_access_key = YOUR_SECRET
-
-[prod]
-aws_access_key_id = PROD_KEY
-aws_secret_access_key = PROD_SECRET
-```
-
-**Option 2: Use Environment Variables**
-
-```bash
-export AWS_ACCESS_KEY_ID=your_key
-export AWS_SECRET_ACCESS_KEY=your_secret
-export AWS_REGION=us-east-1
-```
-
-### Required Permissions
-
-Your AWS user/role needs these permissions:
-- `ce:GetCostAndUsage` - To read cost data
-- `organizations:ListAccounts` - To list accounts (optional)
-- `sts:GetCallerIdentity` - To identify current account
-
-## How It Works
-
-```
-┌─────────────┐
-│   You Run   │
-│   The Tool  │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────┐
-│  Tool Reads     │
-│  AWS Profiles   │
-└──────┬──────────┘
-       │
-       ▼
-┌─────────────────┐
-│  Tool Connects  │
-│  to AWS APIs    │
-└──────┬──────────┘
-       │
-       ▼
-┌─────────────────┐
-│  Fetches Cost   │
-│  Data           │
-└──────┬──────────┘
-       │
-       ▼
-┌─────────────────┐
-│  Shows Results  │
-│  (Tables/CSV/   │
-│   JSON/Charts)  │
-└─────────────────┘
+aws-cost-cli --start-date 2025-01-01 --end-date 2025-01-31
 ```
 
 ## Command Options
 
-| Option | What It Does | Example |
-|--------|--------------|---------|
+| Option | Description | Example |
+|--------|-------------|---------|
 | `--start-date` | Start date (YYYY-MM-DD) | `--start-date 2025-01-01` |
 | `--end-date` | End date (YYYY-MM-DD) | `--end-date 2025-01-31` |
-| `--profiles` | Which AWS profiles to use | `--profiles prod,dev` |
-| `--account-id` | Filter specific accounts | `--account-id 123456789012` |
-| `--granularity` | hourly, daily, or monthly | `--granularity daily` |
-| `--csv` | Export to CSV files | `--csv report` |
+| `--profiles` | Comma-separated AWS profile names | `--profiles prod,dev` |
+| `--account-id` | Filter by account ID(s) | `--account-id 123456789012` |
+| `--granularity` | `hourly`, `daily`, or `monthly` | `--granularity daily` |
+| `--csv` | Export to CSV (filename prefix) | `--csv report` |
 | `--json` | Output as JSON | `--json` |
 | `--chart` | Generate PNG charts | `--chart` |
-| `--tag-key` | Filter by tag | `--tag-key Environment` |
-| `--tag-value` | Tag value to filter | `--tag-value Production` |
+| `--tag-key` | Filter by tag key | `--tag-key Environment` |
+| `--tag-value` | Filter by tag value | `--tag-value Production` |
+| `--profile-account-map` | JSON file mapping profiles to account IDs | `--profile-account-map accounts.json` |
 
 ## Examples
 
-### Example 1: Basic Cost Check
+### Example 1: Basic Usage - Analyze All Accounts
 
+**Linux/Mac:**
 ```bash
 # Using cargo run
 cargo run --release
 
-# Using the built binary
+# Using built binary
 ./target/release/aws-cost-cli
 ```
 
-Shows costs for all your AWS profiles in a table.
-
-### Example 2: Specific Date Range
-
-```bash
+**Windows:**
+```powershell
 # Using cargo run
-cargo run --release -- \
-  --start-date 2025-01-01 \
-  --end-date 2025-01-31
+cargo run --release
 
-# Using the built binary
-./target/release/aws-cost-cli \
-  --start-date 2025-01-01 \
-  --end-date 2025-01-31
+# Using built binary
+target\release\aws-cost-cli.exe
 ```
 
-### Example 3: Export to CSV
+This will automatically discover and analyze all AWS profiles in `~/.aws/credentials` (or `%USERPROFILE%\.aws\credentials` on Windows).
 
+### Example 2: Analyze Specific Date Range
+
+**Linux/Mac:**
 ```bash
 # Using cargo run
-cargo run --release -- \
+cargo run --release -- --start-date 2025-01-01 --end-date 2025-01-31
+
+# Using built binary
+./target/release/aws-cost-cli --start-date 2025-01-01 --end-date 2025-01-31
+```
+
+**Windows:**
+```powershell
+# Using cargo run
+cargo run --release -- --start-date 2025-01-01 --end-date 2025-01-31
+
+# Using built binary
+target\release\aws-cost-cli.exe --start-date 2025-01-01 --end-date 2025-01-31
+```
+
+### Example 3: Analyze Multiple Specific Accounts
+
+**Linux/Mac:**
+```bash
+# Analyze specific profiles
+./target/release/aws-cost-cli --profiles prod,dev,staging
+
+# With date range
+./target/release/aws-cost-cli \
+  --profiles prod,dev \
+  --start-date 2025-01-01 \
+  --end-date 2025-03-31
+```
+
+**Windows:**
+```powershell
+# Analyze specific profiles
+target\release\aws-cost-cli.exe --profiles prod,dev,staging
+
+# With date range (PowerShell uses backtick for line continuation)
+target\release\aws-cost-cli.exe `
+  --profiles prod,dev `
+  --start-date 2025-01-01 `
+  --end-date 2025-03-31
+```
+
+### Example 4: Export to CSV
+
+**Linux/Mac:**
+```bash
+# Export all accounts to CSV
+./target/release/aws-cost-cli --csv q1-report
+
+# With date range
+./target/release/aws-cost-cli \
   --start-date 2025-01-01 \
   --end-date 2025-03-31 \
   --csv q1-report
+```
 
-# Using the built binary
-./target/release/aws-cost-cli \
-  --start-date 2025-01-01 \
-  --end-date 2025-03-31 \
+**Windows:**
+```powershell
+# Export all accounts to CSV
+target\release\aws-cost-cli.exe --csv q1-report
+
+# With date range
+target\release\aws-cost-cli.exe `
+  --start-date 2025-01-01 `
+  --end-date 2025-03-31 `
   --csv q1-report
 ```
 
-Creates CSV files you can open in Excel.
-
-### Example 4: Multiple Profiles
-
-```bash
-# Using cargo run
-cargo run --release -- \
-  --profiles prod,dev,staging \
-  --start-date 2025-01-01 \
-  --end-date 2025-01-31
-
-# Using the built binary
-./target/release/aws-cost-cli \
-  --profiles prod,dev,staging \
-  --start-date 2025-01-01 \
-  --end-date 2025-01-31
-```
+This creates multiple CSV files in the current directory.
 
 ### Example 5: JSON Output
 
+**Linux/Mac:**
 ```bash
-# Using cargo run
-cargo run --release -- --json > costs.json
+# Output JSON to console
+./target/release/aws-cost-cli --json
 
-# Using the built binary
+# Save JSON to file
 ./target/release/aws-cost-cli --json > costs.json
+
+# With date range
+./target/release/aws-cost-cli \
+  --start-date 2025-01-01 \
+  --end-date 2025-01-31 \
+  --json > january-costs.json
 ```
 
-Good for scripts and automation.
+**Windows:**
+```powershell
+# Output JSON to console
+target\release\aws-cost-cli.exe --json
+
+# Save JSON to file
+target\release\aws-cost-cli.exe --json > costs.json
+
+# With date range
+target\release\aws-cost-cli.exe `
+  --start-date 2025-01-01 `
+  --end-date 2025-01-31 `
+  --json > january-costs.json
+```
 
 ### Example 6: Generate Charts
 
+**Linux/Mac:**
 ```bash
-# Using cargo run
-cargo run --release -- --chart
-
-# Using the built binary
+# Generate PNG charts for all accounts
 ./target/release/aws-cost-cli --chart
+
+# With date range
+./target/release/aws-cost-cli \
+  --start-date 2025-01-01 \
+  --end-date 2025-03-31 \
+  --chart
 ```
 
-Creates PNG image files showing cost trends.
+**Windows:**
+```powershell
+# Generate PNG charts for all accounts
+target\release\aws-cost-cli.exe --chart
+
+# With date range
+target\release\aws-cost-cli.exe `
+  --start-date 2025-01-01 `
+  --end-date 2025-03-31 `
+  --chart
+```
+
+### Example 7: Filter by Account ID
+
+**Linux/Mac:**
+```bash
+# Filter by single account ID
+./target/release/aws-cost-cli --account-id 123456789012
+
+# Filter by multiple account IDs
+./target/release/aws-cost-cli --account-id 123456789012,987654321098
+```
+
+**Windows:**
+```powershell
+# Filter by single account ID
+target\release\aws-cost-cli.exe --account-id 123456789012
+
+# Filter by multiple account IDs
+target\release\aws-cost-cli.exe --account-id 123456789012,987654321098
+```
+
+### Example 8: Filter by Tags
+
+**Linux/Mac:**
+```bash
+# Filter by tag key only
+./target/release/aws-cost-cli --tag-key Environment
+
+# Filter by tag key and value
+./target/release/aws-cost-cli \
+  --tag-key Environment \
+  --tag-value Production
+```
+
+**Windows:**
+```powershell
+# Filter by tag key only
+target\release\aws-cost-cli.exe --tag-key Environment
+
+# Filter by tag key and value
+target\release\aws-cost-cli.exe `
+  --tag-key Environment `
+  --tag-value Production
+```
+
+### Example 9: Change Granularity
+
+**Linux/Mac:**
+```bash
+# Daily granularity
+./target/release/aws-cost-cli --granularity daily
+
+# Monthly granularity (default)
+./target/release/aws-cost-cli --granularity monthly
+
+# Hourly granularity (limited to 7 days)
+./target/release/aws-cost-cli \
+  --granularity hourly \
+  --start-date 2025-01-01 \
+  --end-date 2025-01-07
+```
+
+**Windows:**
+```powershell
+# Daily granularity
+target\release\aws-cost-cli.exe --granularity daily
+
+# Monthly granularity (default)
+target\release\aws-cost-cli.exe --granularity monthly
+
+# Hourly granularity (limited to 7 days)
+target\release\aws-cost-cli.exe `
+  --granularity hourly `
+  --start-date 2025-01-01 `
+  --end-date 2025-01-07
+```
+
+### Example 10: Complete Workflow - Multiple Accounts with CSV Export
+
+**Linux/Mac:**
+```bash
+./target/release/aws-cost-cli \
+  --profiles prod,dev,staging \
+  --start-date 2025-01-01 \
+  --end-date 2025-03-31 \
+  --csv q1-report \
+  --granularity monthly
+```
+
+**Windows:**
+```powershell
+target\release\aws-cost-cli.exe `
+  --profiles prod,dev,staging `
+  --start-date 2025-01-01 `
+  --end-date 2025-03-31 `
+  --csv q1-report `
+  --granularity monthly
+```
 
 ## Output Formats
 
-### 1. Console Tables (Default)
-
-Shows formatted tables in your terminal:
-- Unified view of all accounts
+### Console Tables (Default)
+- Unified view across all accounts
 - Cost trends per account
 - Service breakdown per account
-- Total summary
+- Global summary
 
-### 2. CSV Files
-
-Use `--csv filename` to export:
+### CSV Export
+When using `--csv filename`, creates:
 - `filename_trend_profile_X_account_Y.csv` - Cost trends
 - `filename_service_summary_profile_X_account_Y.csv` - Service costs
 - `filename_global_summary.csv` - Totals
-- `filename_unified_view.csv` - All accounts together
+- `filename_unified_view.csv` - All accounts combined
 
-### 3. JSON
+### JSON
+Machine-readable output with account data, unified view, and global summary.
 
-Use `--json` for machine-readable output:
-```json
-{
-  "accounts": [...],
-  "unified_view": [...],
-  "global_summary": {
-    "total_cost": 1234.56,
-    "average_monthly_cost": 1234.56
-  }
-}
-```
-
-### 4. Charts
-
-Use `--chart` to generate PNG images:
-- `cost_trend_profile_X_account_Y.png`
+### Charts
+PNG images showing cost trends: `cost_trend_profile_X_account_Y.png`
 
 ## Account Discovery
 
-The tool finds accounts in this order:
+The tool discovers accounts in this order:
+1. **Profile mapping file** (if `--profile-account-map` provided)
+2. **AWS Organizations** (if account is in an organization)
+3. **Current account** (via STS `GetCallerIdentity`)
 
-1. **Profile Mapping File** (if you provide `--profile-account-map`)
-2. **AWS Organizations** (if your account is in an organization)
-3. **Current Account** (uses STS to get the account you're logged into)
-
-If Organizations doesn't work, it automatically falls back to using your current account.
+If Organizations access fails, it automatically falls back to the current account.
 
 ## Troubleshooting
 
-### "No AWS profiles found"
+### No AWS profiles found
 
-**Fix:** Set up AWS credentials:
+**Problem:** The tool can't find any AWS profiles in your credentials file.
+
+**Solution:**
+
+**Linux/Mac:**
 ```bash
+# Option 1: Set up credentials using AWS CLI
 aws configure
-```
 
-Or specify profiles manually:
-```bash
+# Option 2: Manually create ~/.aws/credentials file
+mkdir -p ~/.aws
+nano ~/.aws/credentials
+
+# Option 3: Manually specify profile when running
 ./target/release/aws-cost-cli --profiles your-profile-name
 ```
 
-### "Authentication error"
+**Windows:**
+```powershell
+# Option 1: Set up credentials using AWS CLI
+aws configure
 
-**Fix:** Check your credentials work:
-```bash
-aws sts get-caller-identity
+# Option 2: Manually create credentials file
+New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.aws
+notepad $env:USERPROFILE\.aws\credentials
+
+# Option 3: Manually specify profile when running
+target\release\aws-cost-cli.exe --profiles your-profile-name
 ```
 
-If using SSO:
+### Authentication error
+
+**Problem:** AWS authentication is failing.
+
+**Solution:**
+
+**Linux/Mac:**
 ```bash
+# Verify your credentials work with AWS CLI
+aws sts get-caller-identity
+
+# Test specific profile
+aws sts get-caller-identity --profile prod
+
+# List all available profiles
+aws configure list-profiles
+
+# For SSO users
 aws sso login
 ```
 
-### "No cost data retrieved"
+**Windows:**
+```powershell
+# Verify your credentials work with AWS CLI
+aws sts get-caller-identity
 
-**Fix:**
-- Make sure Cost Explorer is enabled in your AWS account
-- Check your date range (Cost Explorer has limits)
-- Verify the account actually has costs in that period
+# Test specific profile
+aws sts get-caller-identity --profile prod
 
-### "Hourly granularity limited to 7 days"
+# List all available profiles
+aws configure list-profiles
 
-**Fix:** Hourly data only works for up to 7 days. Use daily or monthly for longer periods.
+# For SSO users
+aws sso login
+```
+
+### Verify credentials file exists
+
+**Linux/Mac:**
+```bash
+# Check if credentials file exists
+ls -la ~/.aws/credentials
+
+# View credentials file (be careful - contains secrets!)
+cat ~/.aws/credentials
+```
+
+**Windows:**
+```powershell
+# Check if credentials file exists
+Test-Path $env:USERPROFILE\.aws\credentials
+
+# View credentials file location
+$env:USERPROFILE\.aws\credentials
+```
+
+### No cost data retrieved
+- Ensure Cost Explorer is enabled in your AWS account
+- Check date range (Cost Explorer has data retention limits)
+- Verify accounts have costs in the specified period
+
+### Hourly granularity limited to 7 days
+Hourly data only works for date ranges up to 7 days. Use `daily` or `monthly` for longer periods.
 
 ## Profile-Account Mapping
 
-If you want to map specific profiles to account IDs, create a JSON file:
+For explicit profile-to-account mapping, create a JSON file:
 
 **accounts.json:**
 ```json
@@ -662,7 +750,6 @@ If you want to map specific profiles to account IDs, create a JSON file:
 }
 ```
 
-Then use it:
 ```bash
 ./target/release/aws-cost-cli --profile-account-map accounts.json
 ```
@@ -671,12 +758,101 @@ Then use it:
 
 - Rust 1.70 or newer
 - AWS account with Cost Explorer enabled
-- AWS credentials configured
+- AWS credentials in `~/.aws/credentials` or environment variables
 
-## License
+## Verification Steps
 
-[Add your license here]
+After installation, verify everything works:
+
+**Step 1: Check AWS credentials**
+```bash
+# Linux/Mac/Windows
+aws sts get-caller-identity
+```
+
+**Step 2: List available profiles**
+```bash
+# Linux/Mac/Windows
+aws configure list-profiles
+```
+
+**Step 3: Test the tool**
+```bash
+# Linux/Mac
+./target/release/aws-cost-cli --help
+
+# Windows
+target\release\aws-cost-cli.exe --help
+```
+
+**Step 4: Run a test query**
+```bash
+# Linux/Mac - analyze last month
+./target/release/aws-cost-cli --start-date 2025-01-01 --end-date 2025-01-31
+
+# Windows - analyze last month
+target\release\aws-cost-cli.exe --start-date 2025-01-01 --end-date 2025-01-31
+```
+
+## Development
+
+### Running During Development
+
+**Linux/Mac:**
+```bash
+# Development mode (faster compilation, slower execution)
+cargo run
+
+# Release mode (slower compilation, faster execution - recommended)
+cargo run --release
+
+# Important: Use -- to separate cargo args from program args
+cargo run --release -- --start-date 2025-01-01 --end-date 2025-01-31
+```
+
+**Windows:**
+```powershell
+# Development mode
+cargo run
+
+# Release mode (recommended)
+cargo run --release
+
+# Important: Use -- to separate cargo args from program args
+cargo run --release -- --start-date 2025-01-01 --end-date 2025-01-31
+```
+
+### Install Globally
+
+**Linux/Mac/Windows:**
+```bash
+# Install to cargo bin directory (available system-wide)
+cargo install --path .
+
+# Now you can run from anywhere
+aws-cost-cli --help
+aws-cost-cli --start-date 2025-01-01 --end-date 2025-01-31
+```
+
+### Other Useful Commands
+
+```bash
+# Clean build artifacts
+cargo clean
+
+# Run tests
+cargo test
+
+# Check for errors without building
+cargo check
+
+# Format code
+cargo fmt
+
+# Lint code
+cargo clippy
+```
 
 ---
 
-**Note:** This tool uses AWS APIs which are free, but make sure you have the right permissions set up.
+**Note:** AWS Cost Explorer API calls are free, but ensure your credentials have the required permissions.
